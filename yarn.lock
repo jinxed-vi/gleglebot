@@ -486,6 +486,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/sqlite3@npm:^5.1.0":
+  version: 5.1.0
+  resolution: "@types/sqlite3@npm:5.1.0"
+  dependencies:
+    sqlite3: "npm:*"
+  checksum: 10c0/94930cae2f93d5cebe390e3050db54c80e5937f744728cd702690305a68f2650dd4dba825b9709969bf1810f5534880efd867d8acea59279363622f5b690c362
+  languageName: node
+  linkType: hard
+
 "abbrev@npm:1":
   version: 1.1.1
   resolution: "abbrev@npm:1.1.1"
@@ -1098,8 +1107,10 @@ __metadata:
   resolution: "gleglebot@workspace:."
   dependencies:
     "@types/node": "npm:^25.3.5"
+    "@types/sqlite3": "npm:^5.1.0"
     dotenv: "npm:^17.3.1"
     lemmy-bot: "npm:^0.6.5"
+    sqlite3: "npm:^5.1.7"
     tsup: "npm:^8.5.1"
     tsx: "npm:^4.21.0"
     typescript: "npm:^5.9.3"
@@ -2179,7 +2190,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sqlite3@npm:^5.1.7":
+"sqlite3@npm:*, sqlite3@npm:^5.1.7":
   version: 5.1.7
   resolution: "sqlite3@npm:5.1.7"
   dependencies:

@@ -14,10 +14,12 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^17.3.1",
-    "lemmy-bot": "^0.6.5"
+    "lemmy-bot": "^0.6.5",
+    "sqlite3": "^5.1.7"
   },
   "devDependencies": {
     "@types/node": "^25.3.5",
+    "@types/sqlite3": "^5.1.0",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
