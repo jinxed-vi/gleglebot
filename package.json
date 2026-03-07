@@ -6,16 +6,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsx src/index.ts",
-    "build": "tsup src/index.ts --format esm",
+    "build": "tsup src/index.ts --format cjs",
     "start": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.30.3",
   "dependencies": {
     "dotenv": "^17.3.1",
-    "lemmy-js-client": "1.0.0-delete-pm-recipient.0"
+    "lemmy-bot": "^0.6.5"
   },
   "devDependencies": {
     "@types/node": "^25.3.5",
@@ -23,5 +22,5 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
   },
-  "type": "module"
+  "packageManager": "yarn@4.13.0"
 }

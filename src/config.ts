@@ -3,7 +3,6 @@ export interface Config {
     username: string;
     password?: string;
     token?: string;
-    pollingIntervalMs: number;
 }
 
 export function getConfig(): Config {
@@ -24,15 +23,10 @@ export function getConfig(): Config {
         throw new Error('Either LEMMY_PASSWORD or LEMMY_TOKEN must be defined.');
     }
 
-    const pollingIntervalMs = process.env.POLLING_INTERVAL_MS
-        ? parseInt(process.env.POLLING_INTERVAL_MS, 10)
-        : 30000;
-
     return {
         instanceUrl,
         username,
         password,
         token,
-        pollingIntervalMs,
     };
 }
