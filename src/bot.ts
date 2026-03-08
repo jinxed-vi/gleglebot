@@ -1,34 +1,36 @@
 import { LemmyBot } from 'lemmy-bot';
 import { Config } from './config.js';
-import sqlite3 from 'sqlite3';
+import fs from 'fs';
 
-const db = new sqlite3.Database('./gleglebot_milestones.db');
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS post_milestones (
-        post_id INTEGER PRIMARY KEY,
-        target INTEGER
-    )`);
-});
+const MILESTONES_FILE = './milestones.json';
+let postMilestones: Record<number, number> = {};
 
-const getMilestone = (postId: number): Promise<number> => {
-    return new Promise((resolve, reject) => {
-        db.get('SELECT target FROM post_milestones WHERE post_id = ?', [postId], (err, row: any) => {
-            if (err) reject(err);
-            else resolve(row ? row.target : 0);
-        });
-    });
+if (fs.existsSync(MILESTONES_FILE)) {
+    try {
+        postMilestones = JSON.parse(fs.readFileSync(MILESTONES_FILE, 'utf-8'));
+    } catch (e) {
+        console.error('Error reading milestones.json', e);
+    }
+}
+
+const saveMilestones = () => {
+    try {
+        fs.writeFileSync(MILESTONES_FILE, JSON.stringify(postMilestones, null, 2));
+    } catch (e) {
+        console.error('Error saving milestones.json', e);
+    }
 };
 
-const setMilestone = (postId: number, target: number): Promise<void> => {
-    return new Promise((resolve, reject) => {
-        db.run(`INSERT INTO post_milestones (post_id, target) VALUES (?, ?) 
-                ON CONFLICT(post_id) DO UPDATE SET target = excluded.target`,
-            [postId, target], (err) => {
-                if (err) reject(err);
-                else resolve();
-            });
-    });
+const getMilestone = async (postId: number): Promise<number> => {
+    return Promise.resolve(postMilestones[postId] || 0);
 };
+
+const setMilestone = async (postId: number, target: number): Promise<void> => {
+    postMilestones[postId] = target;
+    saveMilestones();
+    return Promise.resolve();
+};
+
 
 const ENCOURAGING_MESSAGES = [
     "Ygmi!",
@@ -95,9 +97,10 @@ export class Gleglebot {
                     handle: async ({
                         postView: {
                             counts: { upvotes },
-                            post: { id }
+                            post: { id, creator_id, url },
+                            community: { name: communityName }
                         },
-                        botActions: { createComment },
+                        botActions: { sendPrivateMessage },
                         preventReprocess,
                         reprocess
                     }) => {
@@ -119,22 +122,23 @@ export class Gleglebot {
                             this.postActionsCount++;
                             try {
                                 if (metTarget > lastReached) {
-                                    console.log(`Post ${id} reached ${metTarget} upvotes. Posting comment.`);
-                                    await createComment({
-                                        post_id: id,
-                                        content: `Waow! This post has reached ${metTarget} upvotes!`
+                                    console.log(`Post ${id} reached ${metTarget} upvotes. Sending private message.`);
+                                    await sendPrivateMessage({
+                                        recipient_id: creator_id,
+                                        content: `Your post in !${communityName}@${instanceStr} has reached ${metTarget} upvotes!\n\nCheck it out: https://${instanceStr}/post/${id}`
                                     });
                                     await setMilestone(id, metTarget);
                                 }
                             } catch (e) {
                                 console.error(`Error checking/setting milestone for post ${id}`, e);
+                                reprocess(5);
+                                return;
                             }
-                        }
-
-                        if (metTarget < 100) {
-                            reprocess(5);
-                        } else {
-                            preventReprocess();
+                            if (metTarget < 100) {
+                                reprocess(5);
+                            } else {
+                                preventReprocess();
+                            }
                         }
                     }
                 }
