@@ -1,0 +1,10 @@
+[
+    {
+        "message": "i love you lots $USER$!",
+        "chance": 0.8
+    },
+    {
+        "message": "$USER$! you're my favorite!",
+        "chance": 0.6
+    }
+]

@@ -1,7 +1,7 @@
 node_modules/
 dist/
 .env
-*.db
+data/*.db
 
 .yarn/*
 !.yarn/cache
@@ -11,4 +11,5 @@ dist/
 !.yarn/sdks
 !.yarn/versions
 
-milestones.json
+data/milestones.json
+data/encouraging_messages.json

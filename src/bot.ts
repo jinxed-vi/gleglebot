@@ -2,41 +2,62 @@ import { LemmyBot } from 'lemmy-bot';
 import { Config } from './config.js';
 import fs from 'fs';
 
-const MILESTONES_FILE = './milestones.json';
-let postMilestones: Record<number, number> = {};
+const MILESTONES_FILE = './data/milestones.json';
+const ENCOURAGING_MESSAGES_FILE = './data/encouraging_messages.json';
+
+interface Milestones {
+    upvoteMilestones: Record<number, number>;
+    encouragingMessageMilestones: Record<number, number>;
+}
+
+let milestones: Milestones = {
+    upvoteMilestones: {},
+    encouragingMessageMilestones: {},
+};
+let encouragingMessages: Array<{ message: string, chance: number }> = [];
 
 if (fs.existsSync(MILESTONES_FILE)) {
     try {
-        postMilestones = JSON.parse(fs.readFileSync(MILESTONES_FILE, 'utf-8'));
+        milestones = JSON.parse(fs.readFileSync(MILESTONES_FILE, 'utf-8'));
     } catch (e) {
         console.error('Error reading milestones.json', e);
     }
 }
 
+if (fs.existsSync(ENCOURAGING_MESSAGES_FILE)) {
+    try {
+        encouragingMessages = JSON.parse(fs.readFileSync(ENCOURAGING_MESSAGES_FILE, 'utf-8'));
+    } catch (e) {
+        console.error('Error reading encouraging_messages.json', e);
+    }
+}
+
 const saveMilestones = () => {
     try {
-        fs.writeFileSync(MILESTONES_FILE, JSON.stringify(postMilestones, null, 2));
+        fs.writeFileSync(MILESTONES_FILE, JSON.stringify(milestones, null, 2));
     } catch (e) {
         console.error('Error saving milestones.json', e);
     }
 };
 
-const getMilestone = async (postId: number): Promise<number> => {
-    return Promise.resolve(postMilestones[postId] || 0);
+const getUpvoteMilestone = (postId: number): number => {
+    return milestones.upvoteMilestones[postId] || 0;
 };
 
-const setMilestone = async (postId: number, target: number): Promise<void> => {
-    postMilestones[postId] = target;
+const setUpvoteMilestone = (postId: number, target: number): void => {
+    milestones.upvoteMilestones[postId] = target;
     saveMilestones();
-    return Promise.resolve();
 };
 
+const getEncouragingMessageMilestone = (postId: number): number => {
+    return milestones.encouragingMessageMilestones[postId] || 0;
+};
 
-const ENCOURAGING_MESSAGES = [
-    "Ygmi!",
-    "Based and gleglepilled!",
-    "They ~~glow~~, you **shine**"
-]
+const setEncouragingMessageMilestone = (postId: number, target: number): void => {
+    milestones.encouragingMessageMilestones[postId] = target;
+    saveMilestones();
+};
+
 
 export class Gleglebot {
     private config: Config;
@@ -53,8 +74,41 @@ export class Gleglebot {
 
         const instanceStr = this.config.instanceUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
+        const getEncouragingMessage = (username: string): string => {
+            let chance = Math.random();
+
+            // Pick best chance bracket
+            let optimalChanceBracket = 1;
+
+            for (const message of encouragingMessages) {
+                if (message.chance < chance) {
+                    continue;
+                }
+
+                if (optimalChanceBracket > message.chance) {
+                    optimalChanceBracket = message.chance;
+                }
+            }
+
+            let optimalMessages = encouragingMessages.filter((message) => message.chance === optimalChanceBracket);
+            let randomOptimalMessage = optimalMessages[Math.floor(Math.random() * optimalMessages.length)];
+
+            const original_encouraging_message_index = encouragingMessages.indexOf(randomOptimalMessage);
+            const displayedCount = getEncouragingMessageMilestone(original_encouraging_message_index);
+            setEncouragingMessageMilestone(original_encouraging_message_index, displayedCount + 1);
+
+            const encouraging_message = randomOptimalMessage.message.replace('$USER$', `**${username}**`);
+            return `${encouraging_message}
+
+::: spoiler gleglebot stats
+Chance of this message: \`${optimalChanceBracket}\`
+Chance you rolled: \`${chance.toFixed(2)}\`
+Times this message has been displayed (including this): \`${displayedCount + 1}\`
+:::`;
+        };
+
         this.bot = new LemmyBot({
-            dbFile: './gleglebot.db',
+            dbFile: './data/gleglebot.db',
             instance: instanceStr,
             credentials: {
                 username: this.config.username,
@@ -69,7 +123,8 @@ export class Gleglebot {
                     sort: 'New',
                     handle: ({
                         commentView: {
-                            comment: { content, id, post_id }
+                            comment: { content, id, post_id },
+                            creator: { name: username }
                         },
                         botActions: { createComment },
                         preventReprocess,
@@ -84,7 +139,7 @@ export class Gleglebot {
                             this.postActionsCount++;
                             console.log(`Responding to comment ${id}.`);
                             createComment({
-                                content: ENCOURAGING_MESSAGES[Math.floor(Math.random() * ENCOURAGING_MESSAGES.length)],
+                                content: getEncouragingMessage(username),
                                 post_id: post_id,
                                 parent_id: id
                             });
@@ -113,7 +168,7 @@ export class Gleglebot {
                         }
 
                         if (metTarget > 0) {
-                            const lastReached = await getMilestone(id);
+                            const lastReached = await getUpvoteMilestone(id);
                             if (this.postActionsCount >= this.config.maxPostActionsPerRun) {
                                 console.log(`Max post actions per run reached. Skipping post ${id}.`);
                                 reprocess(5);
@@ -127,7 +182,7 @@ export class Gleglebot {
                                         recipient_id: creator_id,
                                         content: `Your post in !${communityName}@${instanceStr} has reached ${metTarget} upvotes!\n\nCheck it out: https://${instanceStr}/post/${id}`
                                     });
-                                    await setMilestone(id, metTarget);
+                                    await setUpvoteMilestone(id, metTarget);
                                 }
                             } catch (e) {
                                 console.error(`Error checking/setting milestone for post ${id}`, e);
